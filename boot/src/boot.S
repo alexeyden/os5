@@ -1,7 +1,10 @@
-.text
+.section ".text.boot"
 
 .global _start
+.option norvc
 
+/* BROM header */
+_start:
 j _payload        /* jump over the metadata below to the actual payload */
 .ascii "eGON.BT0" /* header marker (magic) */
 .word 0x5f0a6c39  /* checksum initial value */
@@ -14,35 +17,36 @@ j _payload        /* jump over the metadata below to the actual payload */
 .word 0 /* boot cpu / eGON version (don't care) */
 .dword 0 /* platform information (don't care) */
 
+/* entry point */
 _payload:
-.equ GPIO_BASE, 0x02000000
-.equ GPIO_PD_CFG2, 0x98
-.equ GPIO_PD_DAT, 0xA0
 
-/* Configure PD18 as output: GPIO_PD_CFG2[11:8] = 0b0001 */
-li a0, GPIO_BASE + GPIO_PD_CFG2
-lw a1, 0(a0)
-li a2, 0xfffff0ff
-and a1, a1, a2
-ori a1, a1, 0x100
-sw a1, 0(a0)
+/* disable interrupts */
+csrw mie, zero
 
-/* Invert PD18 state: ~GPIO_PD_DAT[18] */
-li a0, GPIO_BASE + GPIO_PD_DAT
-lw a1, 0(a0)
-li a2, 1<<18
+/* enable THEAD extended instruction set */
+li t1, 1<<22
+csrs 0x7c0, t1
 
-_blink:
-xor a1, a1, a2
-sw a1, 0(a0)
+/* invalidate caches (MCOR CSR) */
+li t2, 0x30013
+csrs 0x7c2, t2
 
-/* Sleep for 500ms and jump back */
-li a3, 0
-li a4,  0x40d9000
-_delay:
-addi a3, a3, 1
-beq a3, a4, _blink
-j _delay
+/* setup stack at the top of SRAM A1 */
+li sp, 0x00027FF0
+
+/* zero out bss */
+ld t0, __bss_start
+ld t1, __bss_end
+
+_zero_bss:
+beq t0, t1, _boot_main
+sw zero, 0(t0)
+addi t0, t0, 4
+j _zero_bss
+
+_boot_main:
+/* jump to rust code */
+j _main
 
 _hang:
 j _hang
