@@ -102,14 +102,126 @@ pub unsafe fn uart_read() -> u8 {
     (mmio::read32(UART0_BASE + UART_RBR) & 0xff) as u8
 }
 
-pub struct UART0;
+fn print_hex(v: u64) {
+    let mut shift = 60usize;
+    let mut lz = true;
 
-impl core::fmt::Write for UART0 {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        for &b in s.as_bytes() {
-            unsafe { uart_write(b) };
+    loop {
+        let digit = ((v >> shift) as u8) & 0xf;
+
+        if digit != 0 || !lz {
+            lz = false;
+
+            if digit < 10 {
+                unsafe { uart_write(b'0' + digit) };
+            } else {
+                unsafe { uart_write(b'a' + digit - 10) };
+            }
         }
 
-        Ok(())
+        if shift == 0 {
+            break;
+        }
+
+        shift -= 4;
     }
 }
+
+fn print_dec(mut v: u64) {
+    let mut buf: [u8; 20] = [b'0'; 20];
+
+    let mut i = buf.len();
+    while v > 0 {
+        i -= 1;
+        let digit = (v % 10) as u8;
+        v /= 10;
+        *unsafe { buf.get_unchecked_mut(i) } = b'0' + digit;
+    }
+
+    if i == buf.len() {
+        i -= 1;
+    }
+
+    while i < buf.len() {
+        unsafe { uart_write(*buf.get_unchecked(i)) };
+        i += 1;
+    }
+}
+
+pub fn printfv(format: &str, args: &[&dyn core::any::Any]) -> Option<()> {
+    let mut argn = 0usize;
+    let mut arg = false;
+
+    for &c in format.as_bytes() {
+        if c == b'%' && !arg {
+            arg = true;
+            continue;
+        }
+
+        if arg && c == b'd' {
+            let v = *args.get(argn)?;
+            argn += 1;
+
+            let v = if let Some(&v) = v.downcast_ref::<*const u64>() {
+                unsafe { *v }
+            } else if let Some(&v) = v.downcast_ref::<*const i64>() {
+                let v = unsafe { *v };
+                if v < 0 {
+                    unsafe { uart_write(b'-') };
+                }
+
+                v.abs() as u64
+            } else {
+                return None;
+            };
+
+            print_dec(v);
+        } else if arg && c == b'x' {
+            let v = *args.get(argn)?;
+            argn += 1;
+
+            let v = *v.downcast_ref::<*const u64>()?;
+
+            print_hex(unsafe { *v });
+        } else if arg && c == b'c' {
+            let v = *args.get(argn)?;
+            argn += 1;
+
+            let v = *v.downcast_ref::<*const u8>()?;
+
+            unsafe { uart_write(*v) };
+        } else if arg && c == b's' {
+            let v = *args.get(argn)?;
+            argn += 1;
+
+            let v = *v.downcast_ref::<*const str>()?;
+
+            for &b in unsafe { &*v }.as_bytes() {
+                unsafe { uart_write(b) };
+            }
+        } else if arg && c != b'%' {
+            argn += 1;
+        } else {
+            unsafe { uart_write(c) };
+        }
+
+        arg = false;
+    }
+
+    Some(())
+}
+
+/// Supported type specifiers:
+/// - %d (u64 or i64)
+/// - %x (u64)
+/// - %s (&str)
+/// - %c (u8)
+macro_rules! printf {
+    ($x:literal $(,)? $($arg:expr),*) => {{
+        #[allow(unused_imports)]
+        use core::borrow::Borrow;
+        $crate::uart::printfv($x, &[ $(&($arg.borrow() as *const _)),* ]);
+    }};
+}
+
+pub(crate) use printf;

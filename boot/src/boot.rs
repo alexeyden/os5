@@ -12,12 +12,10 @@ global_asm!(include_str!("boot.S"));
 
 #[no_mangle]
 pub extern "C" fn _main() -> ! {
-    use core::fmt::Write;
-
     unsafe { uart::uart_init() };
 
-    core::write!(&mut uart::UART0, "Hello, world!\r\n").unwrap();
-    core::write!(&mut uart::UART0, "Formatting test: {}, {}, 0x{:x}\r\n", "string", -42, 0xd00dfeedu64).unwrap();
+    uart::printf!("Hello, world!\r\n");
+    uart::printf!("printf formatting test: %s, %d, 0x%x\r\n", "string", -41i64, 0xd00dfeedu64);
 
     loop {}
 }

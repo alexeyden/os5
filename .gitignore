@@ -2,5 +2,5 @@ docs/
 sun20i-spl/
 target
 boot.img
-boot.bin
-**/boot.elf
+boot.bin*
+**/boot.elf*

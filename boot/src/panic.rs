@@ -1,8 +1,10 @@
 use core::panic::PanicInfo;
 
+extern "C" {
+    pub fn rust_panic_called_where_shouldnt() -> !;
+}
+
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    use core::fmt::Write;
-    let _ = core::write!(&mut crate::uart::UART0, "panic: {}", info);
-    loop {}
+fn panic(_info: &PanicInfo) -> ! {
+    unsafe { rust_panic_called_where_shouldnt(); }
 }
