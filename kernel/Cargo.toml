@@ -1,14 +1,13 @@
 [package]
-name = "boot"
+name = "kernel"
 version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "boot"
-path = "src/boot.rs"
+name = "kernel"
+path = "src/kernel.rs"
 
 [dependencies]
 
 [profile.release]
 panic="abort"
-opt-level="z"

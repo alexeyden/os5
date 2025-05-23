@@ -21,101 +21,104 @@ const GPIO_PB_CFG1: u64 = 0x0034;
 const GPIO_PB_PULL: u64 = 0x0054;
 
 pub unsafe fn uart_init() {
-    // Step 1
-    mmio::Reg32::read(CCU_BASE + CCU_UART_BGR_REG)
-        .set_field::<0, 1>(1) // UART0 gating enable
-        .set_field::<16, 1>(1) // UART0 reset deassert
-        .write();
+    unsafe {
+        // Step 1
+        crate::ccu::init_uart();
 
-    // Step 2
-    // Configure pinmux
-    mmio::Reg32::read(GPIO_BASE + GPIO_PB_CFG1)
-        .set_field::<0, 4>(0b0110) // PB8 = UART0-TX
-        .set_field::<4, 4>(0b0110) // PB9 = UART0-RX
-        .write();
+        // Step 2
+        // Configure pinmux
+        mmio::Reg32::read(GPIO_BASE + GPIO_PB_CFG1)
+            .set_field::<0, 4>(0b0110) // PB8 = UART0-TX
+            .set_field::<4, 4>(0b0110) // PB9 = UART0-RX
+            .write();
 
-    mmio::Reg32::read(GPIO_BASE + GPIO_PB_PULL)
-        .set_field::<16, 2>(1) // PB8_PULL = Pull_up
-        .set_field::<18, 2>(1) // PB9_PULL = Pull_up
-        .write();
+        mmio::Reg32::read(GPIO_BASE + GPIO_PB_PULL)
+            .set_field::<16, 2>(1) // PB8_PULL = Pull_up
+            .set_field::<18, 2>(1) // PB9_PULL = Pull_up
+            .write();
 
-    // Configure baud rate
-    mmio::Reg32::read(UART0_BASE + UART_FCR)
-        .set_field::<0, 1>(1) // FIFOE = 1 (enable FIFO)
-        .write();
+        // Configure baud rate
+        mmio::Reg32::read(UART0_BASE + UART_FCR)
+            .set_field::<0, 1>(1) // FIFOE = 1 (enable FIFO)
+            .write();
 
-    mmio::Reg32::read(UART0_BASE + UART_HALT)
-        .set_field::<0, 1>(1) // HALT_TX = 1
-        .write();
+        mmio::Reg32::read(UART0_BASE + UART_HALT)
+            .set_field::<0, 1>(1) // HALT_TX = 1
+            .write();
 
-    mmio::Reg32::read(UART0_BASE + UART_LCR)
-        .set_field::<7, 1>(1) // DLAB = 1 (enable divisor latch register access)
-        .write();
+        mmio::Reg32::read(UART0_BASE + UART_LCR)
+            .set_field::<7, 1>(1) // DLAB = 1 (enable divisor latch register access)
+            .write();
 
-    mmio::Reg32::read(UART0_BASE + UART_DLL)
-        .set_field::<0, 8>(13) // DLL = 13 (divisor Latch = 13, baud rate = 115200)
-        .write();
+        mmio::Reg32::read(UART0_BASE + UART_DLL)
+            .set_field::<0, 8>(13) // DLL = 13 (divisor Latch = 13, baud rate = 115200)
+            .write();
 
-    mmio::Reg32::read(UART0_BASE + UART_DLH)
-        .set_field::<0, 8>(0) // DLH = 0 (divisor Latch = 13, baud rate = 115200)
-        .write();
+        mmio::Reg32::read(UART0_BASE + UART_DLH)
+            .set_field::<0, 8>(0) // DLH = 0 (divisor Latch = 13, baud rate = 115200)
+            .write();
 
-    mmio::Reg32::read(UART0_BASE + UART_LCR)
-        .set_field::<7, 1>(0) // DLAB = 0 (disable divisor latch register access)
-        .write();
+        mmio::Reg32::read(UART0_BASE + UART_LCR)
+            .set_field::<7, 1>(0) // DLAB = 0 (disable divisor latch register access)
+            .write();
 
-    mmio::Reg32::read(UART0_BASE + UART_HALT)
-        .set_field::<0, 1>(0) // HALT_TX = 0
-        .write();
+        mmio::Reg32::read(UART0_BASE + UART_HALT)
+            .set_field::<0, 1>(0) // HALT_TX = 0
+            .write();
 
-    // Step 3
-    // Setup mode
-    mmio::Reg32::read(UART0_BASE + UART_LCR)
-        .set_field::<0, 2>(0b11) // Data Length Select = 8 bits
-        .set_field::<2, 1>(0) // 1 stop bit
-        .set_field::<3, 1>(0) // partiy disabled
-        .set_field::<4, 2>(0) // partiy mode (doesnt really matter because partiy is disabled)
-        .set_field::<6, 1>(0) // break control = 0
-        .write();
+        // Step 3
+        // Setup mode
+        mmio::Reg32::read(UART0_BASE + UART_LCR)
+            .set_field::<0, 2>(0b11) // Data Length Select = 8 bits
+            .set_field::<2, 1>(0) // 1 stop bit
+            .set_field::<3, 1>(0) // partiy disabled
+            .set_field::<4, 2>(0) // partiy mode (doesnt really matter because partiy is disabled)
+            .set_field::<6, 1>(0) // break control = 0
+            .write();
 
-    // Setup FIFO
-    mmio::Reg32::read(UART0_BASE + UART_FCR)
-        .set_field::<0, 1>(1) // FIFOE = 1 (enable FIFO)
-        .set_field::<1, 1>(1) // RFIFOR = 1 (reset rx FIFO)
-        .set_field::<2, 1>(1) // XFIFOR = 1 (reset tx FIFO)
-        .write();
+        // Setup FIFO
+        mmio::Reg32::read(UART0_BASE + UART_FCR)
+            .set_field::<0, 1>(1) // FIFOE = 1 (enable FIFO)
+            .set_field::<1, 1>(1) // RFIFOR = 1 (reset rx FIFO)
+            .set_field::<2, 1>(1) // XFIFOR = 1 (reset tx FIFO)
+            .write();
+    }
 }
 
-pub unsafe fn uart_write(b: u8) {
-    while !mmio::Reg32::read(UART0_BASE + UART_USR).is_bit_set::<1>() {
-        // wait for a free space in FIFO (UART_USR[TFNF] = 1)
-    }
+pub fn uart_write(b: u8) {
+    unsafe {
+        while !mmio::Reg32::read(UART0_BASE + UART_USR).is_bit_set::<1>() {
+            // wait for a free space in FIFO (UART_USR[TFNF] = 1)
+        }
 
-    mmio::write32(UART0_BASE + UART_THR, b as u32);
+        mmio::write32(UART0_BASE + UART_THR, b as u32);
+    }
 }
 
-pub unsafe fn uart_read() -> u8 {
-    while !mmio::Reg32::read(UART0_BASE + UART_USR).is_bit_set::<3>() {
-        // wait until there is something in FIFO (UART_USR[RFNE] = 1)
-    }
+pub fn uart_read() -> u8 {
+    unsafe {
+        while !mmio::Reg32::read(UART0_BASE + UART_USR).is_bit_set::<3>() {
+            // wait until there is something in FIFO (UART_USR[RFNE] = 1)
+        }
 
-    (mmio::read32(UART0_BASE + UART_RBR) & 0xff) as u8
+        (mmio::read32(UART0_BASE + UART_RBR) & 0xff) as u8
+    }
 }
 
 fn print_hex(v: u64) {
     let mut shift = 60usize;
-    let mut lz = true;
+    let mut leading_zero = true;
 
     loop {
         let digit = ((v >> shift) as u8) & 0xf;
 
-        if digit != 0 || !lz {
-            lz = false;
+        if digit != 0 || !leading_zero || shift == 0 {
+            leading_zero = false;
 
             if digit < 10 {
-                unsafe { uart_write(b'0' + digit) };
+                uart_write(b'0' + digit);
             } else {
-                unsafe { uart_write(b'a' + digit - 10) };
+                uart_write(b'a' + digit - 10);
             }
         }
 
@@ -164,10 +167,14 @@ pub fn printfv(format: &str, args: &[&dyn core::any::Any]) -> Option<()> {
 
             let v = if let Some(&v) = v.downcast_ref::<*const u64>() {
                 unsafe { *v }
+            } else if let Some(&v) = v.downcast_ref::<*const u32>() {
+                unsafe { *v as u64 }
+            } else if let Some(&v) = v.downcast_ref::<*const u8>() {
+                unsafe { *v as u64 }
             } else if let Some(&v) = v.downcast_ref::<*const i64>() {
                 let v = unsafe { *v };
                 if v < 0 {
-                    unsafe { uart_write(b'-') };
+                    uart_write(b'-');
                 }
 
                 v.abs() as u64
@@ -180,9 +187,17 @@ pub fn printfv(format: &str, args: &[&dyn core::any::Any]) -> Option<()> {
             let v = *args.get(argn)?;
             argn += 1;
 
-            let v = *v.downcast_ref::<*const u64>()?;
+            let v = if let Some(&v) = v.downcast_ref::<*const u64>() {
+                unsafe { *v }
+            } else if let Some(&v) = v.downcast_ref::<*const u32>() {
+                unsafe { *v as u64 }
+            } else if let Some(&v) = v.downcast_ref::<*const u8>() {
+                unsafe { *v as u64 }
+            } else {
+                return None;
+            };
 
-            print_hex(unsafe { *v });
+            print_hex(v);
         } else if arg && c == b'c' {
             let v = *args.get(argn)?;
             argn += 1;
@@ -194,15 +209,23 @@ pub fn printfv(format: &str, args: &[&dyn core::any::Any]) -> Option<()> {
             let v = *args.get(argn)?;
             argn += 1;
 
-            let v = *v.downcast_ref::<*const str>()?;
-
-            for &b in unsafe { &*v }.as_bytes() {
-                unsafe { uart_write(b) };
-            }
+            if let Some(&s) = v.downcast_ref::<*const str>() {
+                for &b in unsafe { &*s }.as_bytes() {
+                    uart_write(b);
+                }
+            } else if let Some(&s) = v.downcast_ref::<*const *const u8>() {
+                let mut p = unsafe { *s };
+                while unsafe { *p != 0 } {
+                    uart_write(unsafe { *p });
+                    p = unsafe { p.add(1) };
+                }
+            } else {
+                return None;
+            };
         } else if arg && c != b'%' {
             argn += 1;
         } else {
-            unsafe { uart_write(c) };
+            uart_write(c);
         }
 
         arg = false;
@@ -212,15 +235,15 @@ pub fn printfv(format: &str, args: &[&dyn core::any::Any]) -> Option<()> {
 }
 
 /// Supported type specifiers:
-/// - %d (u64 or i64)
-/// - %x (u64)
+/// - %d (u64/i64/u32)
+/// - %x (u64/u32)
 /// - %s (&str)
 /// - %c (u8)
 macro_rules! printf {
-    ($x:literal $(,)? $($arg:expr),*) => {{
+    ($x:expr $(,$arg:expr)*) => {{
         #[allow(unused_imports)]
         use core::borrow::Borrow;
-        $crate::uart::printfv($x, &[ $(&($arg.borrow() as *const _)),* ]);
+        $crate::uart::printfv($x, &[ $(&($arg.borrow() as *const _)),* ])
     }};
 }
 

@@ -22,4 +22,7 @@ boot.img.S: boot.img
 boot.elf.S: boot/boot.elf
 	riscv64-elf-objdump -S boot/boot.elf > boot.elf.S
 
-.PHONY: clean boot/boot.elf
+shell:
+	sudo picocom -b 115200 -s lrzsz-sz /dev/ttyUSB0 
+
+.PHONY: clean boot/boot.elf shell
